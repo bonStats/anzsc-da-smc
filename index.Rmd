@@ -173,7 +173,7 @@ knitr::opts_chunk$set(cache = T)
 
 Joint work with **Anthony Lee** (Bristol University) and **Christopher Drovandi** (QUT)
 
-Slides available here: https://bonstats.github.io/isba-da-smc/
+Slides available here: https://bonstats.github.io/anzsc-da-smc/
 
 ---
 
