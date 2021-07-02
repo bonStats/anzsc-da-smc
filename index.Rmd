@@ -18,13 +18,30 @@ output:
        after_body: insert-logo.html
 
 ---
+class: list-space
+
+## Details and talk outline
+
+Joint work with **Anthony Lee** (Bristol University) and **Christopher Drovandi** (QUT)
+
+- Slides available: https://bonstats.github.io/anzsc-da-smc/
+- Paper available: https://arxiv.org/abs/2009.03699
+
+--
+
+**Talk outline**
+- Deep end: Importance sampling to SMC (in 3 slides)
+- David vs Goliath: Optimising delayed-acceptance in SMC
+- Hand waving: Other tuning and optimisation for surrogate likelihoods 
+- Did it work?: Results and summary
+  
+  
+
+
+---
 class: inverse, center, middle, hide-logo
 
 # How can a surrogate likelihood be exploited for computational gains in SMC? 
-
-      
----
-class: list-space
 
 <style>
 
@@ -163,18 +180,6 @@ knitr::opts_chunk$set(cache = T)
 
 ```
 
-## Talk outline
-
-1. Importance sampling to SMC
-2. Tuning delayed-acceptance in SMC
-3. Calibrating surrogate likelihoods in SMC
-4. Surrogate first annealing strategy
-5. Experiment results
-
-Joint work with **Anthony Lee** (Bristol University) and **Christopher Drovandi** (QUT)
-
-Slides available here: https://bonstats.github.io/anzsc-da-smc/
-
 ---
 
 ## Importance sampling
@@ -198,40 +203,17 @@ $$\begin{aligned}\text{Locations: }& \qquad \boldsymbol{\theta}_{i} \sim g(\bold
 \end{aligned}$$
 ]]
 
----
-
-
-## Sequential Monte Carlo
-
-Hard to develop an importance distribution $g(\boldsymbol{\theta})$! 
-
- `r emo::ji("pepper")` Take a series of smaller steps.
-
---
-
-- Choose a schedule to connect a tractable starting distribution $p_{0}(\boldsymbol{\theta})$ to the posterior $p_{T}(\boldsymbol{\theta}) = p(\boldsymbol{\theta}~\vert~\boldsymbol{y})$. For example
-
-$$p_{t}(\boldsymbol{\theta}) = p_{0}(\boldsymbol{\theta})^{1-\gamma_{t}}p(\boldsymbol{\theta}~\vert~\boldsymbol{y})^{\gamma_{t}} \quad t = 1, 2, \ldots, T$$
-
---
-
-- With temperature schedule:
-
-$$0 = \gamma_{0} < \gamma_{1} < \cdots < \gamma_{T-1} < \gamma_{T} = 1$$
-
---
-
-- Draw a sample from starting distribution $p_{0}(\boldsymbol{\theta})$ then iteratively reweight through sequence of distributions
-
---
-
-.full-width[.content-box-red[**Problem**: The variance of the weights increases after each iteration]]
 
 ---
 
-## Sequential Monte Carlo 
+## Sequential Monte Carlo: spicy importance sampling
 
-To avoid particle degeneracy, after reweighting:
+--
+
+.full-width[.content-box-green[
+`r emo::ji("pepper")` **Sequence of distributions**: $p_{t}(\boldsymbol{\theta}) = p_{0}(\boldsymbol{\theta})^{1-\gamma_{t}}p(\boldsymbol{\theta}~\vert~\boldsymbol{y})^{\gamma_{t}}$
+- $0 = \gamma_{0} < \gamma_{1} < \cdots < \gamma_{T-1} < \gamma_{T} = 1$
+]]
 
 --
 
@@ -400,6 +382,141 @@ Fix a finite set of potential parameters, e.g. $\phi \in \{0.1, 0.5, 1.0\}$
 
     - $\text{median}\left\{\sum_{s=1}^{k} \hat{J_{s}}(\phi^{\star}) \right\} > d$
 
+
+---
+class: list-space
+## Overview:
+
+Three strategies used:
+
+1. Delayed-acceptance in SMC
+    - Tune DA kernel adaptively with pilot run of mutation step
+2. Surrogate likelihood calibration
+    - Tune surrogate likelihood using history of particles
+3. Surrogate first annealing
+    - Use Surrogate posterior used as intermediate distribution
+
+---
+
+## Testing the strategies with simulations
+
+Run simulation to test optimisation framework
+
+- Number of particles: 1000 or 2000
+
+- Linear regression with $p = 5$
+
+- Full likelihood: Normal or student-t distribution df = 3 (with artificial delay)
+
+- Surrogate likelihood: Biased normal distribution
+
+- Ratio of full to surrogate cost: $\rho \in \{10^1,10^2,10^3,10^4,10^5,10^6\}$
+
+- Location-scale calibration using squared difference of surrogate and full log-likelihood (with regularisation)
+
+--
+
+**Test with combinations of SMC flavours**: 
+
+- DA = delayed-acceptance kernel
+- T = Transformation (surrogate calibration)
+- SFA = Surrogate first annealing
+
+---
+class: list-space
+
+## Overview of Results
+
+- DA+T+SFA had the best *computation* time improvements
+   - speeding up SMC by $2.9\times$ to $8.8\times$ compared to standard SMC. 
+   - better improvements for larger $\rho$
+
+--
+- DA+T+SFA had the best *efficiency* gains also 
+   - SE $\times$ SLE: gains of $1.6\times$ to $7.6\times$
+   - SE $\times$ time: gains of $3.0\times$ to $8.8\times$
+   - better improvements for larger $\rho$
+
+--
+- "DA+T only" typically did better than "SFA only"
+
+--
+- DA+T+SFA has super-linear performance compared to "DA+T only" and "SFA only"
+
+--
+- Posterior distributions from adaptive SMC methods matched baseline
+
+---
+class: list-space
+
+## Example on Whittle Likelihood
+
+- The Whittle likelihood is a computationally efficient likelihood approximation for time series models ([Whittle 1953](https://doi.org/10.1007/BF02590998))
+
+--
+
+
+- Constructed using (discrete) Fourier transforms to the frequency domain
+
+--
+
+
+- $3.9\times$ to $5.8\times$ speed-up across the 10 simulations (80% interval)
+
+--
+
+
+- Reduced computation time from $\approx$ 20.5 hours to 4.5 hours
+
+---
+
+## Posterior Comparisons - Whittle
+
+```{r whittle-plot-post-comp, eval = T, echo = F, out.width='65%', }
+
+pdfcvt <- "plots/whittle-phi2-2020-09-06"
+
+cvt <- F
+
+if(cvt){
+  
+  pdftools::pdf_convert(pdf = paste0(pdfcvt,".pdf"), format = "png", dpi = 72*3,
+                        filenames = paste0(pdfcvt,".png"))
+}
+
+knitr::include_graphics(paste0(pdfcvt,".png"))
+```
+
+---
+class: list-space
+
+## Conclusions
+
+--
+
+- A generic framework for tuning mutation kernels in SMC
+
+    - Choosing optimal kernel tuning parameters and number of cycles
+    - Ensure sufficient particle diversification adaptively
+
+--
+
+- Explored uses of surrogate likelihoods in SMC
+
+    - Delayed-acceptance
+    - Surrogate first annealing
+
+--
+
+- Adaptively improves surrogate likelihoods
+
+    - With surrogate likelihood calibration
+
+---
+class: middle, center
+
+# Thank you for watching
+
 ---
 class: inverse, center, middle, hide-logo
 
@@ -488,66 +605,6 @@ $$p_{0}(\boldsymbol{\theta}) \rightarrow \tilde{p}(\boldsymbol{\theta}~\vert~\bo
 |  2.0 | $p(\boldsymbol{\theta}~\vert~\boldsymbol{y})$ |
 
 ---
-class: list-space
-## Recap
-
-Three strategies used:
-
-1. Delayed-acceptance
-    - Tuned with pilot run of mutation step
-2. Surrogate likelihood calibration
-    - Uses history of particles
-3. Surrogate first annealing
-    - Surrogate posterior used as intermediate distribution
-
----
-
-## Testing the strategies with simulations
-
-Run simulation to test optimisation framework
-
-- Number of particles: 1000 or 2000
-
-- Linear regression with $p = 5$
-
-- Full likelihood: Normal or student-t distribution df = 3 (with artificial delay)
-
-- Surrogate likelihood: Biased normal distribution
-
-- Ratio of full to surrogate cost: $\rho \in \{10^1,10^2,10^3,10^4,10^5,10^6\}$
-
-- Location-scale calibration using squared difference of surrogate and full log-likelihood (with regularisation)
-
---
-
-**Test with combinations of SMC flavours**: 
-
-- DA = delayed-acceptance kernel
-- T = Transformation (surrogate calibration)
-- SFA = Surrogate first annealing
-
----
-class: list-space
-
-## Overview of Results
-
-- DA+T+SFA had the best *computation* time improvements
-   - speeding up SMC by $2.9\times$ to $8.8\times$ compared to standard SMC. 
-   - better improvements for larger $\rho$
-
---
-- DA+T+SFA had the best *efficiency* gains also 
-   - SE $\times$ SLE: gains of $1.6\times$ to $7.6\times$
-   - SE $\times$ time: gains of $3.0\times$ to $8.8\times$
-   - better improvements for larger $\rho$
-
---
-- "DA+T only" typically did better than "SFA only"
-
---
-- DA+T+SFA has super-linear performance compared to "DA+T only" and "SFA only"
-
----
 
 ## Efficiency Results
 
@@ -584,75 +641,4 @@ if(cvt){
 
 knitr::include_graphics(paste0(pdfcvt,".png"), )
 ```
-
----
-class: list-space
-
-## Example on Whittle Likelihood
-
-- The Whittle likelihood is a computationally efficient likelihood approximation for time series models ([Whittle 1953](https://doi.org/10.1007/BF02590998))
-
---
-
-
-- Constructed using (discrete) Fourier transforms to the frequency domain
-
---
-
-
-- $3.9\times$ to $5.8\times$ speed-up across the 10 simulations (80% interval)
-
---
-
-
-- Reduced computation time from $\approx$ 20.5 hours to 4.5 hours
-
----
-
-## Posterior Comparisons - Whittle
-
-```{r whittle-plot-post-comp, eval = T, echo = F, out.width='65%', }
-
-pdfcvt <- "plots/whittle-phi2-2020-09-06"
-
-cvt <- F
-
-if(cvt){
-  
-  pdftools::pdf_convert(pdf = paste0(pdfcvt,".pdf"), format = "png", dpi = 72*3,
-                        filenames = paste0(pdfcvt,".png"))
-}
-
-knitr::include_graphics(paste0(pdfcvt,".png"))
-```
-
----
-class: list-space
-
-## Conclusions
-
---
-
-- A generic framework for tuning mutation kernels in SMC
-
-    - Choosing optimal kernel tuning parameters and number of cycles
-    - Ensure sufficient particle diversification adaptively
-
---
-
-- Explored uses of surrogate likelihoods in SMC
-
-    - Delayed-acceptance
-    - Surrogate first annealing
-
---
-
-- Adaptively improves surrogate likelihoods
-
-    - With surrogate likelihood calibration
-
----
-class: middle, center
-
-# Thank you for watching
 
